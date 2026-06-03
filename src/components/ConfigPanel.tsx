@@ -1,50 +1,23 @@
-import type { AppMode } from "@/src/types/telemetry";
-
 type ConfigPanelProps = {
-  mode: AppMode;
   baseUrl: string;
   isLoading: boolean;
-  onModeChange: (mode: AppMode) => void;
   onBaseUrlChange: (value: string) => void;
   onTestConnection: () => void;
 };
 
 export function ConfigPanel({
-  mode,
   baseUrl,
   isLoading,
-  onModeChange,
   onBaseUrlChange,
   onTestConnection
 }: ConfigPanelProps) {
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,420px)] lg:items-end">
+    <section className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,460px)] lg:items-end">
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">Modo de operacao</label>
-          <div className="grid grid-cols-2 rounded-lg border border-slate-200 bg-slate-100 p-1">
-            <button
-              type="button"
-              onClick={() => onModeChange("mock")}
-              className={`rounded-md px-3 py-2 text-sm font-semibold transition ${
-                mode === "mock"
-                  ? "bg-white text-slate-950 shadow-sm"
-                  : "text-slate-600 hover:text-slate-950"
-              }`}
-            >
-              Modo Mock
-            </button>
-            <button
-              type="button"
-              onClick={() => onModeChange("real")}
-              className={`rounded-md px-3 py-2 text-sm font-semibold transition ${
-                mode === "real"
-                  ? "bg-white text-slate-950 shadow-sm"
-                  : "text-slate-600 hover:text-slate-950"
-              }`}
-            >
-              Backend NestJS
-            </button>
+          <div className="text-sm font-medium text-slate-700">Fonte de dados</div>
+          <div className="mt-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">
+            Backend real conectado por API REST
           </div>
         </div>
 

@@ -74,15 +74,13 @@ model Dispositivo {
 
 model RegistroTelemetria {
   id                 String           @id @default(uuid())
+  pacoteId           String?          @unique
   dispositivoId      String
   dispositivo        Dispositivo      @relation(fields: [dispositivoId], references: [id], onDelete: Cascade)
   veiculoId          String
   veiculo            Veiculo          @relation(fields: [veiculoId], references: [id], onDelete: Cascade)
   timestamp          DateTime
-  latitude           Float
-  longitude          Float
   velocidadeObd      Float?
-  velocidadeGps      Float?
   rpm                Int?
   temperaturaMotor   Float?
   eventos            EventoVeicular[]

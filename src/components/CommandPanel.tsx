@@ -13,24 +13,9 @@ const commandButtons: Array<{
   className: string;
 }> = [
   {
-    label: "Iniciar monitoramento",
-    command: "start",
-    className: "bg-emerald-600 hover:bg-emerald-700"
-  },
-  {
-    label: "Parar monitoramento",
-    command: "stop",
-    className: "bg-rose-600 hover:bg-rose-700"
-  },
-  {
     label: "Verificar sincronizacao",
     command: "sync",
     className: "bg-sky-600 hover:bg-sky-700"
-  },
-  {
-    label: "Limpar logs",
-    command: "clear-logs",
-    className: "bg-slate-700 hover:bg-slate-800"
   }
 ];
 
@@ -43,15 +28,15 @@ export function CommandPanel({
   const disabled = isBusy || isLoading;
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <section className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-slate-950">Comandos</h2>
-          <p className="text-sm text-slate-600">Acoes basicas integradas ao backend e firmware.</p>
+          <h2 className="text-lg font-semibold text-slate-950">Operacao</h2>
+          <p className="text-sm text-slate-600">Acoes reais expostas pelo backend para o dispositivo.</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {commandButtons.map((button) => (
           <button
             key={button.command}

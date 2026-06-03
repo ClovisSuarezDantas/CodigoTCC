@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "MVP Telemetria Veicular",
-  description: "Painel de teste para ESP32, OBD-II e GPS"
+  description: "Painel de teste para ESP32 e OBD-II"
 };
 
 const geistSans = Geist({

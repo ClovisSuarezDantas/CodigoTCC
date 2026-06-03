@@ -1,9 +1,11 @@
 import type {
-  DeviceCommand,
+  DashboardData,
   DeviceStatus,
+  EventConfig,
   LogEntry,
   SyncStatus,
-  TelemetryData
+  TelemetryData,
+  VehicleInfo
 } from "@/src/types/telemetry";
 
 export const DEFAULT_BASE_URL = "http://localhost:3000";
@@ -48,11 +50,9 @@ type VeiculoApi = {
 type RegistroTelemetriaApi = {
   id: string;
   timestamp: string;
-  latitude: number;
-  longitude: number;
   velocidadeObd: number | null;
-  velocidadeGps: number | null;
   rpm: number | null;
+  temperaturaMotor: number | null;
 };
 
 type EventoApi = {
@@ -60,6 +60,11 @@ type EventoApi = {
   descricao: string;
   severidade: "BAIXA" | "MEDIA" | "ALTA";
   timestamp: string;
+};
+
+type ConfiguracaoApi = EventConfig & {
+  id: string;
+  veiculoId: string;
 };
 
 export type ApiResult<T> = ApiSuccess<T> | ApiFailure;
@@ -226,44 +231,58 @@ function syncStatusFromApi(status?: DispositivoApi["statusSincronizacao"]): Sync
   return "pendente";
 }
 
-function getSpeed(registro: RegistroTelemetriaApi | undefined) {
-  if (!registro) {
-    return 0;
-  }
-
-  return Math.max(registro.velocidadeObd ?? 0, registro.velocidadeGps ?? 0);
-}
-
-async function fetchVeiculos(baseUrl: string) {
-  return authenticatedRequest<VeiculoApi[]>(baseUrl, "/veiculos");
-}
-
-async function fetchDispositivos(baseUrl: string) {
-  return authenticatedRequest<DispositivoApi[]>(baseUrl, "/dispositivos");
-}
-
-export async function fetchStatus(baseUrl: string): Promise<ApiResult<DeviceStatus>> {
-  const dispositivosResult = await fetchDispositivos(baseUrl);
-
-  if (!dispositivosResult.ok) {
-    return dispositivosResult;
-  }
-
-  const dispositivo = dispositivosResult.data[0];
-
+function mapVehicle(veiculo: VeiculoApi): VehicleInfo {
   return {
-    ok: true,
-    data: {
-      connected: dispositivo?.statusSincronizacao === "SINCRONIZADO",
-      deviceName: dispositivo?.codigoDispositivo ?? "Nenhum dispositivo cadastrado",
-      firmwareVersion: "Backend NestJS",
-      uptime: 0
-    }
+    id: veiculo.id,
+    label: `${veiculo.marca} ${veiculo.modelo}`,
+    plate: veiculo.placa,
+    brand: veiculo.marca,
+    model: veiculo.modelo
   };
 }
 
-export async function fetchTelemetry(baseUrl: string): Promise<ApiResult<TelemetryData>> {
-  const veiculosResult = await fetchVeiculos(baseUrl);
+function mapTelemetry(
+  registro: RegistroTelemetriaApi | undefined,
+  totalRegistros: number,
+  syncStatus: SyncStatus
+): TelemetryData | null {
+  if (!registro) {
+    return null;
+  }
+
+  const speed = registro.velocidadeObd ?? 0;
+  const rpm = registro.rpm ?? 0;
+
+  return {
+    speed,
+    rpm,
+    engineTemperature: registro.temperaturaMotor ?? 0,
+    vehicleStatus: speed > 0 || rpm > 0 ? "ligado" : "desligado",
+    storedRecords: totalRegistros,
+    syncStatus,
+    timestamp: registro.timestamp
+  };
+}
+
+function mapLogs(eventos: EventoApi[]): LogEntry[] {
+  return eventos.map((evento) => ({
+    level: evento.severidade === "ALTA" ? "error" : evento.severidade === "MEDIA" ? "warning" : "info",
+    message: `${evento.tipo}: ${evento.descricao}`,
+    timestamp: evento.timestamp
+  }));
+}
+
+function mapStatus(dispositivo?: DispositivoApi | null): DeviceStatus {
+  return {
+    connected: dispositivo?.statusSincronizacao === "SINCRONIZADO",
+    deviceName: dispositivo?.codigoDispositivo ?? "Nenhum dispositivo cadastrado",
+    firmwareVersion: "ESP32 OBD-II",
+    lastSyncAt: dispositivo?.ultimaSincronizacao ?? null
+  };
+}
+
+export async function fetchDashboard(baseUrl: string): Promise<ApiResult<DashboardData>> {
+  const veiculosResult = await authenticatedRequest<VeiculoApi[]>(baseUrl, "/veiculos");
 
   if (!veiculosResult.ok) {
     return veiculosResult;
@@ -273,89 +292,72 @@ export async function fetchTelemetry(baseUrl: string): Promise<ApiResult<Telemet
 
   if (!veiculo) {
     return {
-      ok: false,
-      message: "Nenhum veiculo encontrado para o usuario autenticado."
+      ok: true,
+      data: {
+        vehicle: null,
+        status: mapStatus(null),
+        telemetry: null,
+        logs: [],
+        config: null
+      }
     };
   }
 
-  const registrosResult = await authenticatedRequest<RegistroTelemetriaApi[]>(
-    baseUrl,
-    `/telemetria/veiculo/${veiculo.id}`
-  );
+  const syncStatus = syncStatusFromApi(veiculo.dispositivo?.statusSincronizacao);
+  const [registrosResult, eventosResult, configResult] = await Promise.all([
+    authenticatedRequest<RegistroTelemetriaApi[]>(baseUrl, `/telemetria/veiculo/${veiculo.id}`),
+    authenticatedRequest<EventoApi[]>(baseUrl, `/eventos/veiculo/${veiculo.id}`),
+    authenticatedRequest<ConfiguracaoApi>(baseUrl, `/configuracoes-veiculo/${veiculo.id}`)
+  ]);
 
   if (!registrosResult.ok) {
-    return registrosResult;
+    return { ok: false, message: registrosResult.message };
   }
 
-  const registro = registrosResult.data[0];
-  const speed = getSpeed(registro);
+  if (!eventosResult.ok) {
+    return { ok: false, message: eventosResult.message };
+  }
+
+  if (!configResult.ok) {
+    return { ok: false, message: configResult.message };
+  }
 
   return {
     ok: true,
     data: {
-      speed,
-      rpm: registro?.rpm ?? 0,
-      latitude: registro?.latitude ?? null,
-      longitude: registro?.longitude ?? null,
-      gpsStatus: registro ? "ok" : "indisponivel",
-      vehicleStatus: speed > 0 || (registro?.rpm ?? 0) > 0 ? "ligado" : "desligado",
-      storedRecords: registrosResult.data.length,
-      syncStatus: syncStatusFromApi(veiculo.dispositivo?.statusSincronizacao),
-      timestamp: registro?.timestamp ?? new Date().toISOString()
+      vehicle: mapVehicle(veiculo),
+      status: mapStatus(veiculo.dispositivo),
+      telemetry: mapTelemetry(registrosResult.data[0], registrosResult.data.length, syncStatus),
+      logs: mapLogs(eventosResult.data),
+      config: {
+        limiteVelocidade: configResult.data.limiteVelocidade,
+        tempoParadaLongaMinutos: configResult.data.tempoParadaLongaMinutos,
+        limiteFrenagemBrusca: configResult.data.limiteFrenagemBrusca,
+        limiteAceleracaoBrusca: configResult.data.limiteAceleracaoBrusca
+      }
     }
   };
 }
 
-export async function fetchLogs(baseUrl: string): Promise<ApiResult<LogEntry[]>> {
-  const veiculosResult = await fetchVeiculos(baseUrl);
-
-  if (!veiculosResult.ok) {
-    return veiculosResult;
-  }
-
-  const veiculo = veiculosResult.data[0];
-
-  if (!veiculo) {
-    return { ok: true, data: [] };
-  }
-
-  const eventosResult = await authenticatedRequest<EventoApi[]>(
+export async function verifySync(baseUrl: string) {
+  return authenticatedRequest<{ atualizados?: number; limiteSemAtualizacaoMinutos?: number }>(
     baseUrl,
-    `/eventos/veiculo/${veiculo.id}`
+    "/dispositivos/verificar-sincronizacao",
+    { method: "PATCH" }
   );
-
-  if (!eventosResult.ok) {
-    return eventosResult;
-  }
-
-  return {
-    ok: true,
-    data: eventosResult.data.map((evento) => ({
-      level: evento.severidade === "ALTA" ? "error" : evento.severidade === "MEDIA" ? "warning" : "info",
-      message: `${evento.tipo}: ${evento.descricao}`,
-      timestamp: evento.timestamp
-    }))
-  };
 }
 
-export async function sendCommand(baseUrl: string, command: DeviceCommand) {
-  if (command === "sync") {
-    return authenticatedRequest<{ message?: string }>(
-      baseUrl,
-      "/dispositivos/verificar-sincronizacao",
-      { method: "PATCH" }
-    );
-  }
-
-  const messages: Record<DeviceCommand, string> = {
-    start: "Monitoramento controlado pelo dispositivo embarcado.",
-    stop: "Parada do monitoramento deve ser enviada ao firmware.",
-    sync: "Sincronizacao verificada no backend.",
-    "clear-logs": "Limpeza local de logs mantida apenas na interface."
-  };
-
-  return {
-    ok: true,
-    data: { message: messages[command] }
-  } satisfies ApiResult<{ message?: string }>;
+export async function updateVehicleConfig(
+  baseUrl: string,
+  vehicleId: string,
+  config: EventConfig
+) {
+  return authenticatedRequest<ConfiguracaoApi>(
+    baseUrl,
+    `/configuracoes-veiculo/${vehicleId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(config)
+    }
+  );
 }

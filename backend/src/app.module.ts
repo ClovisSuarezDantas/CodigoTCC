@@ -5,6 +5,7 @@ import { ConfiguracoesVeiculoModule } from './configuracoes-veiculo/configuracoe
 import { DispositivosModule } from './dispositivos/dispositivos.module';
 import { EventosModule } from './eventos/eventos.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { RabbitmqModule } from './rabbitmq/rabbitmq.module';
 import { TelemetriaModule } from './telemetria/telemetria.module';
 import { UsuariosModule } from './usuarios/usuarios.module';
 import { VeiculosModule } from './veiculos/veiculos.module';
@@ -18,6 +19,7 @@ import { VeiculosModule } from './veiculos/veiculos.module';
     VeiculosModule,
     DispositivosModule,
     TelemetriaModule,
+    RabbitmqModule,
     EventosModule,
     ConfiguracoesVeiculoModule,
   ],

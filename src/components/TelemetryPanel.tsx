@@ -1,6 +1,5 @@
 import { TelemetryCard } from "@/src/components/TelemetryCard";
 import type {
-  GpsStatus,
   SyncStatus,
   TelemetryData,
   VehicleStatus
@@ -8,12 +7,6 @@ import type {
 
 type TelemetryPanelProps = {
   telemetry: TelemetryData | null;
-};
-
-const gpsLabels: Record<GpsStatus, string> = {
-  ok: "OK",
-  sem_sinal: "Sem sinal",
-  indisponivel: "Indisponivel"
 };
 
 const vehicleLabels: Record<VehicleStatus, string> = {
@@ -28,10 +21,6 @@ const syncLabels: Record<SyncStatus, string> = {
   offline: "Offline"
 };
 
-function formatCoordinate(value: number | null) {
-  return value === null ? "--" : value.toFixed(6);
-}
-
 function formatTimestamp(value?: string) {
   if (!value) {
     return "Sem leitura";
@@ -41,18 +30,6 @@ function formatTimestamp(value?: string) {
     dateStyle: "short",
     timeStyle: "medium"
   }).format(new Date(value));
-}
-
-function getGpsTone(status?: GpsStatus) {
-  if (status === "ok") {
-    return "success";
-  }
-
-  if (status === "sem_sinal") {
-    return "warning";
-  }
-
-  return "neutral";
 }
 
 function getVehicleTone(status?: VehicleStatus) {
@@ -80,10 +57,6 @@ function getSyncTone(status?: SyncStatus) {
 }
 
 export function TelemetryPanel({ telemetry }: TelemetryPanelProps) {
-  const gpsDescription = telemetry
-    ? `Lat ${formatCoordinate(telemetry.latitude)} | Lon ${formatCoordinate(telemetry.longitude)}`
-    : "Lat -- | Lon --";
-
   return (
     <section aria-labelledby="telemetry-heading">
       <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
@@ -97,7 +70,13 @@ export function TelemetryPanel({ telemetry }: TelemetryPanelProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {!telemetry ? (
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Nenhuma telemetria real carregada. Verifique se o backend recebeu pacotes do ESP32.
+        </div>
+      ) : null}
+
+      <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <TelemetryCard
           title="Velocidade"
           value={telemetry ? String(telemetry.speed) : "--"}
@@ -113,10 +92,11 @@ export function TelemetryPanel({ telemetry }: TelemetryPanelProps) {
           tone="neutral"
         />
         <TelemetryCard
-          title="GPS"
-          value={telemetry ? gpsLabels[telemetry.gpsStatus] : "--"}
-          description={gpsDescription}
-          tone={getGpsTone(telemetry?.gpsStatus)}
+          title="Temperatura"
+          value={telemetry ? String(telemetry.engineTemperature) : "--"}
+          unit="C"
+          description="Temperatura do motor lida via OBD-II."
+          tone="neutral"
         />
         <TelemetryCard
           title="Estado do veiculo"

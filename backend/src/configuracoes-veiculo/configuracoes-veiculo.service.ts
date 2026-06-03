@@ -33,7 +33,9 @@ export class ConfiguracoesVeiculoService {
       where: { veiculoId },
     });
     if (!configuracao) {
-      throw new NotFoundException('Configuracao do veiculo nao encontrada.');
+      return this.prisma.configuracaoVeiculo.create({
+        data: { veiculoId },
+      });
     }
     return configuracao;
   }

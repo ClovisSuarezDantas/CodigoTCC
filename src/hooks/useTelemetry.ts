@@ -3,39 +3,30 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   DEFAULT_BASE_URL,
-  fetchLogs,
-  fetchStatus,
-  fetchTelemetry,
+  fetchDashboard,
   getStoredBaseUrl,
   saveBaseUrl,
-  sendCommand
+  updateVehicleConfig,
+  verifySync
 } from "@/src/lib/api";
-import {
-  getMockLogs,
-  getMockStatus,
-  getMockTelemetry,
-  runMockCommand
-} from "@/src/lib/mock";
 import type {
-  AppMode,
+  DashboardData,
   DeviceCommand,
-  DeviceStatus,
-  LogEntry,
-  TelemetryData
+  EventConfig,
+  LogEntry
 } from "@/src/types/telemetry";
 
-const offlineStatus: DeviceStatus = {
-  connected: false,
-  deviceName: "Backend indisponivel",
-  firmwareVersion: "-",
-  uptime: 0
-};
-
-const initialMockStatus: DeviceStatus = {
-  connected: true,
-  deviceName: "ESP32 Telemetria Mock",
-  firmwareVersion: "0.1.0-mock",
-  uptime: 0
+const emptyDashboard: DashboardData = {
+  vehicle: null,
+  status: {
+    connected: false,
+    deviceName: "Backend nao conectado",
+    firmwareVersion: "-",
+    lastSyncAt: null
+  },
+  telemetry: null,
+  logs: [],
+  config: null
 };
 
 function createLocalLog(level: LogEntry["level"], message: string): LogEntry {
@@ -47,15 +38,13 @@ function createLocalLog(level: LogEntry["level"], message: string): LogEntry {
 }
 
 export function useTelemetry() {
-  const [mode, setMode] = useState<AppMode>("mock");
   const [baseUrl, setBaseUrl] = useState(DEFAULT_BASE_URL);
-  const [status, setStatus] = useState<DeviceStatus>(initialMockStatus);
-  const [telemetry, setTelemetry] = useState<TelemetryData | null>(null);
-  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [dashboard, setDashboard] = useState<DashboardData>(emptyDashboard);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isCommandRunning, setIsCommandRunning] = useState(false);
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
 
   useEffect(() => {
     setBaseUrl(getStoredBaseUrl());
@@ -66,120 +55,118 @@ export function useTelemetry() {
     saveBaseUrl(value);
   }, []);
 
+  const pushLocalLog = useCallback((level: LogEntry["level"], message: string) => {
+    setDashboard((current) => ({
+      ...current,
+      logs: [createLocalLog(level, message), ...current.logs].slice(0, 30)
+    }));
+  }, []);
+
   const refresh = useCallback(async () => {
-    if (mode === "mock") {
-      setStatus(getMockStatus());
-      setTelemetry((current) => getMockTelemetry(current ?? undefined));
-      setLogs(getMockLogs());
-      setError(null);
-      setLastUpdated(new Date().toISOString());
-      return;
-    }
-
     setIsLoading(true);
 
-    const [statusResult, telemetryResult, logsResult] = await Promise.all([
-      fetchStatus(baseUrl),
-      fetchTelemetry(baseUrl),
-      fetchLogs(baseUrl)
-    ]);
-
-    const messages: string[] = [];
-
-    if (statusResult.ok) {
-      setStatus(statusResult.data);
-    } else {
-      setStatus(offlineStatus);
-      messages.push(statusResult.message);
-    }
-
-    if (telemetryResult.ok) {
-      setTelemetry(telemetryResult.data);
-    } else {
-      messages.push(telemetryResult.message);
-    }
-
-    if (logsResult.ok) {
-      setLogs(logsResult.data);
-    } else {
-      messages.push(logsResult.message);
-      setLogs((current) => [
-        createLocalLog("error", logsResult.message),
-        ...current
-      ].slice(0, 30));
-    }
-
-    setError(messages[0] ?? null);
-    setLastUpdated(new Date().toISOString());
-    setIsLoading(false);
-  }, [baseUrl, mode]);
-
-  const testConnection = useCallback(async () => {
-    if (mode === "mock") {
-      setStatus(getMockStatus());
-      setError(null);
-      setLogs((current) => [
-        createLocalLog("info", "Teste de conexao mock aprovado."),
-        ...current
-      ].slice(0, 30));
-      return;
-    }
-
-    setIsLoading(true);
-    const result = await fetchStatus(baseUrl);
+    const result = await fetchDashboard(baseUrl);
 
     if (result.ok) {
-      setStatus(result.data);
+      setDashboard(result.data);
       setError(null);
-      setLogs((current) => [
-        createLocalLog("info", "Conexao com backend testada com sucesso."),
-        ...current
-      ].slice(0, 30));
     } else {
-      setStatus(offlineStatus);
+      setDashboard((current) => ({
+        ...current,
+        status: emptyDashboard.status,
+        logs: [createLocalLog("error", result.message), ...current.logs].slice(0, 30)
+      }));
       setError(result.message);
-      setLogs((current) => [
-        createLocalLog("error", result.message),
-        ...current
-      ].slice(0, 30));
     }
 
     setLastUpdated(new Date().toISOString());
     setIsLoading(false);
-  }, [baseUrl, mode]);
+  }, [baseUrl]);
+
+  const testConnection = useCallback(async () => {
+    setIsLoading(true);
+
+    const result = await fetchDashboard(baseUrl);
+
+    if (result.ok) {
+      setDashboard((current) => ({
+        ...result.data,
+        logs: [
+          createLocalLog("info", "Conexao com backend testada com sucesso."),
+          ...result.data.logs
+        ].slice(0, 30)
+      }));
+      setError(null);
+    } else {
+      setError(result.message);
+      setDashboard((current) => ({
+        ...current,
+        status: emptyDashboard.status,
+        logs: [createLocalLog("error", result.message), ...current.logs].slice(0, 30)
+      }));
+    }
+
+    setLastUpdated(new Date().toISOString());
+    setIsLoading(false);
+  }, [baseUrl]);
 
   const runCommand = useCallback(
     async (command: DeviceCommand) => {
       setIsCommandRunning(true);
 
-      if (mode === "mock") {
-        const result = runMockCommand(command);
-        setLogs(result.logs);
-        setError(null);
-        setIsCommandRunning(false);
-        return;
-      }
+      if (command === "sync") {
+        const result = await verifySync(baseUrl);
 
-      const result = await sendCommand(baseUrl, command);
-
-      if (result.ok) {
-        setError(null);
-        setLogs((current) => [
-          createLocalLog("info", result.data?.message || "Comando executado no backend."),
-          ...current
-        ].slice(0, 30));
-        await refresh();
-      } else {
-        setError(result.message);
-        setLogs((current) => [
-          createLocalLog("error", result.message),
-          ...current
-        ].slice(0, 30));
+        if (result.ok) {
+          const updated = result.data.atualizados ?? 0;
+          setError(null);
+          pushLocalLog("info", `Verificacao concluida. ${updated} dispositivo(s) marcado(s) como nao sincronizado(s).`);
+          await refresh();
+        } else {
+          setError(result.message);
+          pushLocalLog("error", result.message);
+        }
       }
 
       setIsCommandRunning(false);
     },
-    [baseUrl, mode, refresh]
+    [baseUrl, pushLocalLog, refresh]
+  );
+
+  const saveConfig = useCallback(
+    async (config: EventConfig) => {
+      if (!dashboard.vehicle) {
+        setError("Nenhum veiculo disponivel para atualizar configuracao.");
+        return;
+      }
+
+      setIsSavingConfig(true);
+
+      const result = await updateVehicleConfig(baseUrl, dashboard.vehicle.id, config);
+
+      if (result.ok) {
+        setDashboard((current) => ({
+          ...current,
+          config: {
+            limiteVelocidade: result.data.limiteVelocidade,
+            tempoParadaLongaMinutos: result.data.tempoParadaLongaMinutos,
+            limiteFrenagemBrusca: result.data.limiteFrenagemBrusca,
+            limiteAceleracaoBrusca: result.data.limiteAceleracaoBrusca
+          },
+          logs: [
+            createLocalLog("info", "Configuracao de eventos atualizada no backend."),
+            ...current.logs
+          ].slice(0, 30)
+        }));
+        setError(null);
+      } else {
+        setError(result.message);
+        pushLocalLog("error", result.message);
+      }
+
+      setIsSavingConfig(false);
+    },
+    [baseUrl, dashboard.vehicle, pushLocalLog]
   );
 
   useEffect(() => {
@@ -187,25 +174,23 @@ export function useTelemetry() {
 
     const interval = window.setInterval(() => {
       void refresh();
-    }, 2000);
+    }, 3000);
 
     return () => window.clearInterval(interval);
   }, [refresh]);
 
   return {
-    mode,
-    setMode,
     baseUrl,
     updateBaseUrl,
-    status,
-    telemetry,
-    logs,
+    dashboard,
     error,
     lastUpdated,
     isLoading,
     isCommandRunning,
+    isSavingConfig,
     refresh,
     testConnection,
-    runCommand
+    runCommand,
+    saveConfig
   };
 }

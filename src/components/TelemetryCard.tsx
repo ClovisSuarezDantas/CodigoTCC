@@ -22,7 +22,7 @@ export function TelemetryCard({
   tone = "neutral"
 }: TelemetryCardProps) {
   return (
-    <article className={`rounded-lg border p-4 shadow-sm ${toneClasses[tone]}`}>
+    <article className={`rounded-md border p-4 shadow-sm ${toneClasses[tone]}`}>
       <div className="text-sm font-medium text-slate-600">{title}</div>
       <div className="mt-3 flex min-h-10 items-baseline gap-2">
         <span className="break-words text-3xl font-semibold leading-none text-slate-950">

@@ -2,6 +2,7 @@
 
 import { CommandPanel } from "@/src/components/CommandPanel";
 import { ConfigPanel } from "@/src/components/ConfigPanel";
+import { EventConfigPanel } from "@/src/components/EventConfigPanel";
 import { LogsPanel } from "@/src/components/LogsPanel";
 import { StatusBar } from "@/src/components/StatusBar";
 import { TelemetryPanel } from "@/src/components/TelemetryPanel";
@@ -9,52 +10,60 @@ import { useTelemetry } from "@/src/hooks/useTelemetry";
 
 export default function Home() {
   const {
-    mode,
-    setMode,
     baseUrl,
     updateBaseUrl,
-    status,
-    telemetry,
-    logs,
+    dashboard,
     error,
     lastUpdated,
     isLoading,
     isCommandRunning,
+    isSavingConfig,
     refresh,
     testConnection,
-    runCommand
+    runCommand,
+    saveConfig
   } = useTelemetry();
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-slate-100 px-4 py-6 sm:px-6 lg:px-8">
       <div className="mx-auto flex max-w-7xl flex-col gap-5">
-        <header className="flex flex-col gap-2 border-b border-slate-200 pb-5">
-          <h1 className="text-3xl font-semibold tracking-normal text-slate-950">
-            MVP Telemetria Veicular
-          </h1>
-          <p className="text-base text-slate-600">
-            Painel integrado ao backend NestJS, ESP32, OBD-II e GPS
-          </p>
+        <header className="flex flex-col gap-3 border-b border-slate-300 pb-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-normal text-slate-950">
+              Caixa preta veicular
+            </h1>
+            <p className="mt-1 text-base text-slate-600">
+              Monitoramento real com backend NestJS, PostgreSQL, RabbitMQ, ESP32 e OBD-II/CAN.
+            </p>
+          </div>
+          <div className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm">
+            Dados reais da API
+          </div>
         </header>
 
         <ConfigPanel
-          mode={mode}
           baseUrl={baseUrl}
           isLoading={isLoading}
-          onModeChange={setMode}
           onBaseUrlChange={updateBaseUrl}
           onTestConnection={testConnection}
         />
 
         <StatusBar
-          mode={mode}
-          status={status}
+          status={dashboard.status}
+          vehicle={dashboard.vehicle}
           error={error}
           lastUpdated={lastUpdated}
           isLoading={isLoading}
         />
 
-        <TelemetryPanel telemetry={telemetry} />
+        <TelemetryPanel telemetry={dashboard.telemetry} />
+
+        <EventConfigPanel
+          vehicle={dashboard.vehicle}
+          config={dashboard.config}
+          isSaving={isSavingConfig}
+          onSave={saveConfig}
+        />
 
         <CommandPanel
           isBusy={isCommandRunning}
@@ -63,7 +72,7 @@ export default function Home() {
           onRefresh={refresh}
         />
 
-        <LogsPanel logs={logs} />
+        <LogsPanel logs={dashboard.logs} />
       </div>
     </main>
   );

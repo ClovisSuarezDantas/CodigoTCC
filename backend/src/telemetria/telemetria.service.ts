@@ -14,6 +14,34 @@ export class TelemetriaService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateRegistroTelemetriaDto) {
+    if (dto.pacoteId) {
+      const registroExistente = await this.prisma.registroTelemetria.findUnique({
+        where: { pacoteId: dto.pacoteId },
+        include: { eventos: true },
+      });
+
+      if (registroExistente) {
+        const configuracaoAplicada = await this.obterConfiguracaoDoVeiculo(
+          registroExistente.veiculoId,
+        );
+
+        await this.prisma.dispositivo.update({
+          where: { id: registroExistente.dispositivoId },
+          data: {
+            statusSincronizacao: StatusSincronizacao.SINCRONIZADO,
+            ultimaSincronizacao: new Date(),
+          },
+        });
+
+        return {
+          registro: registroExistente,
+          eventosGerados: registroExistente.eventos,
+          configuracaoAplicada,
+          duplicado: true,
+        };
+      }
+    }
+
     const dispositivo = await this.prisma.dispositivo.findUnique({
       where: { codigoDispositivo: dto.codigoDispositivo },
       include: { veiculo: { include: { configuracao: true } } },
@@ -26,13 +54,11 @@ export class TelemetriaService {
     const timestamp = new Date(dto.timestamp);
     const registro = await this.prisma.registroTelemetria.create({
       data: {
+        pacoteId: dto.pacoteId,
         dispositivoId: dispositivo.id,
         veiculoId: dispositivo.veiculoId,
         timestamp,
-        latitude: dto.latitude,
-        longitude: dto.longitude,
         velocidadeObd: dto.velocidadeObd,
-        velocidadeGps: dto.velocidadeGps,
         rpm: dto.rpm,
         temperaturaMotor: dto.temperaturaMotor,
       },
@@ -46,18 +72,20 @@ export class TelemetriaService {
       },
     });
 
+    const configuracaoAplicada =
+      dispositivo.veiculo.configuracao ??
+      (await this.prisma.configuracaoVeiculo.create({
+        data: { veiculoId: dispositivo.veiculoId },
+      }));
+
     const eventos = await this.gerarEventosDerivados({
       registro,
       dispositivoId: dispositivo.id,
       veiculoId: dispositivo.veiculoId,
-      configuracao:
-        dispositivo.veiculo.configuracao ??
-        (await this.prisma.configuracaoVeiculo.create({
-          data: { veiculoId: dispositivo.veiculoId },
-        })),
+      configuracao: configuracaoAplicada,
     });
 
-    return { registro, eventosGerados: eventos };
+    return { registro, eventosGerados: eventos, configuracaoAplicada };
   }
 
   async findByVeiculo(usuarioId: string, veiculoId: string) {
@@ -178,7 +206,7 @@ export class TelemetriaService {
       where: {
         dispositivoId,
         timestamp: { lt: registro.timestamp },
-        OR: [{ velocidadeObd: { gt: 0 } }, { velocidadeGps: { gt: 0 } }],
+        velocidadeObd: { gt: 0 },
       },
       orderBy: { timestamp: 'desc' },
     });
@@ -189,7 +217,7 @@ export class TelemetriaService {
         timestamp: ultimoMovimento
           ? { gt: ultimoMovimento.timestamp, lte: registro.timestamp }
           : { lte: registro.timestamp },
-        OR: [{ velocidadeObd: 0 }, { velocidadeGps: 0 }],
+        velocidadeObd: 0,
       },
       orderBy: { timestamp: 'asc' },
     });
@@ -218,10 +246,13 @@ export class TelemetriaService {
   }
 
   private obterVelocidade(registro): number | null {
-    const velocidades = [registro.velocidadeObd, registro.velocidadeGps].filter(
-      (velocidade) => velocidade !== null && velocidade !== undefined,
-    );
-    return velocidades.length > 0 ? Math.max(...velocidades) : null;
+    return registro.velocidadeObd ?? null;
+  }
+
+  private async obterConfiguracaoDoVeiculo(veiculoId: string) {
+    return this.prisma.configuracaoVeiculo.findUnique({
+      where: { veiculoId },
+    });
   }
 
   private async validarVeiculoDoUsuario(usuarioId: string, veiculoId: string) {

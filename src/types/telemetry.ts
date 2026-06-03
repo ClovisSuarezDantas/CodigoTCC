@@ -1,26 +1,45 @@
-export type GpsStatus = "ok" | "sem_sinal" | "indisponivel";
-
 export type VehicleStatus = "ligado" | "desligado" | "erro";
 
 export type SyncStatus = "sincronizado" | "pendente" | "offline";
 
+export type VehicleInfo = {
+  id: string;
+  label: string;
+  plate: string;
+  brand: string;
+  model: string;
+};
+
 export type TelemetryData = {
   speed: number;
   rpm: number;
-  latitude: number | null;
-  longitude: number | null;
-  gpsStatus: GpsStatus;
+  engineTemperature: number;
   vehicleStatus: VehicleStatus;
   storedRecords: number;
   syncStatus: SyncStatus;
   timestamp: string;
 };
 
+export type EventConfig = {
+  limiteVelocidade: number;
+  tempoParadaLongaMinutos: number;
+  limiteFrenagemBrusca: number;
+  limiteAceleracaoBrusca: number;
+};
+
 export type DeviceStatus = {
   connected: boolean;
   deviceName: string;
   firmwareVersion: string;
-  uptime: number;
+  lastSyncAt: string | null;
+};
+
+export type DashboardData = {
+  vehicle: VehicleInfo | null;
+  status: DeviceStatus;
+  telemetry: TelemetryData | null;
+  logs: LogEntry[];
+  config: EventConfig | null;
 };
 
 export type LogEntry = {
@@ -29,6 +48,4 @@ export type LogEntry = {
   timestamp: string;
 };
 
-export type AppMode = "mock" | "real";
-
-export type DeviceCommand = "start" | "stop" | "sync" | "clear-logs";
+export type DeviceCommand = "sync";
