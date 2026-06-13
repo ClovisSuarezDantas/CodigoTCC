@@ -1,20 +1,22 @@
 import type {
   DashboardData,
+  DeviceRecord,
   DeviceStatus,
   EventConfig,
+  EventRecord,
   LogEntry,
   SyncStatus,
   TelemetryData,
-  VehicleInfo
+  TelemetryRecord,
+  VehicleInfo,
+  VehicleRecord
 } from "@/src/types/telemetry";
 
-export const DEFAULT_BASE_URL = "http://localhost:3000";
+export const DEFAULT_BASE_URL = "http://localhost:8080";
 
 const BASE_URL_STORAGE_KEY = "telemetria_backend_base_url";
-const TOKEN_STORAGE_KEY = "telemetria_backend_token";
+const AUTH_STORAGE_KEY = "telemetria_backend_auth";
 const REQUEST_TIMEOUT_MS = 5000;
-const DEFAULT_EMAIL = process.env.NEXT_PUBLIC_TCC_EMAIL ?? "aluno@tcc.com";
-const DEFAULT_PASSWORD = process.env.NEXT_PUBLIC_TCC_PASSWORD ?? "123456";
 
 type ApiSuccess<T> = {
   ok: true;
@@ -27,47 +29,37 @@ type ApiFailure = {
   message: string;
 };
 
-type LoginResponse = {
+export type ApiResult<T> = ApiSuccess<T> | ApiFailure;
+
+export type BackendUser = {
+  id: string;
+  nome: string;
+  email: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AuthSession = {
+  usuario: BackendUser;
   accessToken: string;
 };
 
-type DispositivoApi = {
-  id: string;
-  veiculoId: string;
-  codigoDispositivo: string;
-  statusSincronizacao: "SINCRONIZADO" | "NAO_SINCRONIZADO";
-  ultimaSincronizacao: string | null;
-};
+type AuthResponse = AuthSession;
 
-type VeiculoApi = {
-  id: string;
-  placa: string;
-  marca: string;
-  modelo: string;
+type DispositivoApi = DeviceRecord;
+
+type VeiculoApi = VehicleRecord & {
   dispositivo?: DispositivoApi | null;
 };
 
-type RegistroTelemetriaApi = {
-  id: string;
-  timestamp: string;
-  velocidadeObd: number | null;
-  rpm: number | null;
-  temperaturaMotor: number | null;
-};
+type RegistroTelemetriaApi = TelemetryRecord;
 
-type EventoApi = {
-  tipo: string;
-  descricao: string;
-  severidade: "BAIXA" | "MEDIA" | "ALTA";
-  timestamp: string;
-};
+type EventoApi = EventRecord;
 
 type ConfiguracaoApi = EventConfig & {
   id: string;
   veiculoId: string;
 };
-
-export type ApiResult<T> = ApiSuccess<T> | ApiFailure;
 
 export function normalizeBaseUrl(url: string) {
   return url.trim().replace(/\/+$/, "");
@@ -89,20 +81,39 @@ export function saveBaseUrl(url: string) {
   localStorage.setItem(BASE_URL_STORAGE_KEY, normalizeBaseUrl(url));
 }
 
-function getStoredToken() {
+export function getAuthSession(): AuthSession | null {
   if (typeof window === "undefined") {
     return null;
   }
 
-  return localStorage.getItem(TOKEN_STORAGE_KEY);
+  const stored = localStorage.getItem(AUTH_STORAGE_KEY);
+
+  if (!stored) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(stored) as AuthSession;
+  } catch {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    return null;
+  }
 }
 
-function saveToken(token: string) {
+export function saveAuthSession(session: AuthSession) {
   if (typeof window === "undefined") {
     return;
   }
 
-  localStorage.setItem(TOKEN_STORAGE_KEY, token);
+  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+}
+
+export function clearAuthSession() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  localStorage.removeItem(AUTH_STORAGE_KEY);
 }
 
 async function requestJson<T>(
@@ -134,21 +145,26 @@ async function requestJson<T>(
       signal: controller.signal
     });
 
+    const text = await response.text();
+    const data = text ? JSON.parse(text) : undefined;
+
     if (!response.ok) {
+      const message =
+        typeof data?.message === "string"
+          ? data.message
+          : `O backend respondeu com erro HTTP ${response.status}.`;
+
+      if (response.status === 401) {
+        clearAuthSession();
+      }
+
       return {
         ok: false,
-        message: `O backend respondeu com erro HTTP ${response.status}.`
+        message
       };
     }
 
-    if (response.status === 204) {
-      return { ok: true, data: undefined as T };
-    }
-
-    const text = await response.text();
-    const data = text ? (JSON.parse(text) as T) : (undefined as T);
-
-    return { ok: true, data };
+    return { ok: true, data: data as T };
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
       return {
@@ -166,7 +182,7 @@ async function requestJson<T>(
 
     return {
       ok: false,
-      message: "Nao foi possivel conectar ao backend. Confira a URL e o CORS da API."
+      message: "Nao foi possivel conectar ao backend. Confira a URL, a porta e o CORS da API."
     };
   } finally {
     window.clearTimeout(timeout);
@@ -178,45 +194,53 @@ async function authenticatedRequest<T>(
   path: string,
   options?: RequestInit
 ) {
-  const tokenResult = await getBackendToken(baseUrl);
+  const session = getAuthSession();
 
-  if (!tokenResult.ok) {
-    return tokenResult;
+  if (!session?.accessToken) {
+    return {
+      ok: false,
+      message: "Sessao expirada. Faca login novamente."
+    } satisfies ApiFailure;
   }
 
   return requestJson<T>(baseUrl, path, {
     ...options,
     headers: {
-      Authorization: `Bearer ${tokenResult.data}`,
+      Authorization: `Bearer ${session.accessToken}`,
       ...(options?.headers ?? {})
     }
   });
 }
 
-async function getBackendToken(baseUrl: string): Promise<ApiResult<string>> {
-  const storedToken = getStoredToken();
-
-  if (storedToken) {
-    return { ok: true, data: storedToken };
-  }
-
-  const loginResult = await requestJson<LoginResponse>(baseUrl, "/auth/login", {
+export async function login(baseUrl: string, email: string, senha: string) {
+  const result = await requestJson<AuthResponse>(baseUrl, "/auth/login", {
     method: "POST",
-    body: JSON.stringify({
-      email: DEFAULT_EMAIL,
-      senha: DEFAULT_PASSWORD
-    })
+    body: JSON.stringify({ email, senha })
   });
 
-  if (!loginResult.ok) {
-    return {
-      ok: false,
-      message: `${loginResult.message} Execute o seed ou informe credenciais validas em NEXT_PUBLIC_TCC_EMAIL/NEXT_PUBLIC_TCC_PASSWORD.`
-    };
+  if (result.ok) {
+    saveBaseUrl(baseUrl);
+    saveAuthSession(result.data);
   }
 
-  saveToken(loginResult.data.accessToken);
-  return { ok: true, data: loginResult.data.accessToken };
+  return result;
+}
+
+export async function register(
+  baseUrl: string,
+  payload: { nome: string; email: string; senha: string }
+) {
+  const result = await requestJson<AuthResponse>(baseUrl, "/auth/register", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+
+  if (result.ok) {
+    saveBaseUrl(baseUrl);
+    saveAuthSession(result.data);
+  }
+
+  return result;
 }
 
 function syncStatusFromApi(status?: DispositivoApi["statusSincronizacao"]): SyncStatus {
@@ -340,11 +364,11 @@ export async function fetchDashboard(baseUrl: string): Promise<ApiResult<Dashboa
 }
 
 export async function verifySync(baseUrl: string) {
-  return authenticatedRequest<{ atualizados?: number; limiteSemAtualizacaoMinutos?: number }>(
-    baseUrl,
-    "/dispositivos/verificar-sincronizacao",
-    { method: "PATCH" }
-  );
+  return authenticatedRequest<{
+    dispositivosMarcadosComoNaoSincronizados?: number;
+    atualizados?: number;
+    limiteSemAtualizacaoMinutos?: number;
+  }>(baseUrl, "/dispositivos/verificar-sincronizacao", { method: "PATCH" });
 }
 
 export async function updateVehicleConfig(
@@ -359,5 +383,78 @@ export async function updateVehicleConfig(
       method: "PUT",
       body: JSON.stringify(config)
     }
+  );
+}
+
+export function fetchVehicles(baseUrl: string) {
+  return authenticatedRequest<VehicleRecord[]>(baseUrl, "/veiculos");
+}
+
+export function createVehicle(
+  baseUrl: string,
+  payload: { placa: string; chassi?: string; marca: string; modelo: string; ano: number }
+) {
+  return authenticatedRequest<VehicleRecord>(baseUrl, "/veiculos", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function updateVehicle(
+  baseUrl: string,
+  id: string,
+  payload: Partial<{ placa: string; chassi: string; marca: string; modelo: string; ano: number }>
+) {
+  return authenticatedRequest<VehicleRecord>(baseUrl, `/veiculos/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function deleteVehicle(baseUrl: string, id: string) {
+  return authenticatedRequest<{ message: string }>(baseUrl, `/veiculos/${id}`, {
+    method: "DELETE"
+  });
+}
+
+export function fetchDevices(baseUrl: string) {
+  return authenticatedRequest<DeviceRecord[]>(baseUrl, "/dispositivos");
+}
+
+export function createDevice(
+  baseUrl: string,
+  payload: { veiculoId: string; codigoDispositivo: string }
+) {
+  return authenticatedRequest<DeviceRecord>(baseUrl, "/dispositivos", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function updateDevice(
+  baseUrl: string,
+  id: string,
+  payload: Partial<{ codigoDispositivo: string; statusSincronizacao: DeviceRecord["statusSincronizacao"] }>
+) {
+  return authenticatedRequest<DeviceRecord>(baseUrl, `/dispositivos/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function deleteDevice(baseUrl: string, id: string) {
+  return authenticatedRequest<{ message: string }>(baseUrl, `/dispositivos/${id}`, {
+    method: "DELETE"
+  });
+}
+
+export function fetchEvents(baseUrl: string) {
+  return authenticatedRequest<EventRecord[]>(baseUrl, "/eventos");
+}
+
+export function fetchVehicleTelemetry(baseUrl: string, veiculoId: string) {
+  return authenticatedRequest<TelemetryRecord[]>(
+    baseUrl,
+    `/telemetria/veiculo/${veiculoId}`
   );
 }

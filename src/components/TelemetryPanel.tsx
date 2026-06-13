@@ -58,25 +58,25 @@ function getSyncTone(status?: SyncStatus) {
 
 export function TelemetryPanel({ telemetry }: TelemetryPanelProps) {
   return (
-    <section aria-labelledby="telemetry-heading">
-      <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+    <section aria-labelledby="telemetry-heading" className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <div className="mb-4 flex flex-col gap-2 border-b border-slate-200 pb-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 id="telemetry-heading" className="text-lg font-semibold text-slate-950">
+          <h2 id="telemetry-heading" className="text-xl font-extrabold text-slate-950">
             Telemetria atual
           </h2>
-          <p className="text-sm text-slate-600">
-            Ultima leitura: {formatTimestamp(telemetry?.timestamp)}
+          <p className="mt-1 text-sm text-slate-600">
+            Última leitura: {formatTimestamp(telemetry?.timestamp)}
           </p>
         </div>
       </div>
 
       {!telemetry ? (
-        <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">
           Nenhuma telemetria real carregada. Verifique se o backend recebeu pacotes do ESP32.
         </div>
       ) : null}
 
-      <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <TelemetryCard
           title="Velocidade"
           value={telemetry ? String(telemetry.speed) : "--"}
@@ -88,7 +88,7 @@ export function TelemetryPanel({ telemetry }: TelemetryPanelProps) {
           title="RPM"
           value={telemetry ? String(telemetry.rpm) : "--"}
           unit="rpm"
-          description="Rotacao atual do motor."
+          description="Rotação atual do motor."
           tone="neutral"
         />
         <TelemetryCard
@@ -99,9 +99,9 @@ export function TelemetryPanel({ telemetry }: TelemetryPanelProps) {
           tone="neutral"
         />
         <TelemetryCard
-          title="Estado do veiculo"
+          title="Estado do veículo"
           value={telemetry ? vehicleLabels[telemetry.vehicleStatus] : "--"}
-          description="Estado operacional inferido pela ultima telemetria."
+          description="Estado operacional inferido pela última telemetria."
           tone={getVehicleTone(telemetry?.vehicleStatus)}
         />
         <TelemetryCard
@@ -111,9 +111,9 @@ export function TelemetryPanel({ telemetry }: TelemetryPanelProps) {
           tone="neutral"
         />
         <TelemetryCard
-          title="Sincronizacao"
+          title="Sincronização"
           value={telemetry ? syncLabels[telemetry.syncStatus] : "--"}
-          description="Situacao dos dados em relacao ao envio."
+          description="Situação dos dados em relação ao envio."
           tone={getSyncTone(telemetry?.syncStatus)}
         />
       </div>

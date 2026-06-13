@@ -45,7 +45,7 @@ const fields: Field[] = [
   },
   {
     key: "limiteAceleracaoBrusca",
-    label: "Aceleracao brusca",
+    label: "Aceleração brusca",
     unit: "km/h",
     min: 1
   }
@@ -81,16 +81,16 @@ export function EventConfigPanel({
   }
 
   return (
-    <section className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <div className="mb-4 flex flex-col gap-2 border-b border-slate-200 pb-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-slate-950">Configuracao dos eventos</h2>
+          <h2 className="text-lg font-extrabold text-slate-950">Configuração dos eventos</h2>
           <p className="text-sm text-slate-600">
             Limites usados pelo backend ao gerar eventos derivados.
           </p>
         </div>
         {vehicle ? (
-          <span className="w-fit rounded-md border border-slate-200 bg-slate-50 px-3 py-1 text-sm font-medium text-slate-700">
+          <span className="w-fit rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm font-extrabold text-slate-700">
             {vehicle.plate}
           </span>
         ) : null}
@@ -99,7 +99,7 @@ export function EventConfigPanel({
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {fields.map((field) => (
           <label key={field.key} className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">{field.label}</span>
+            <span className="mb-1 block text-sm font-extrabold text-slate-700">{field.label}</span>
             <div className="flex min-h-11 overflow-hidden rounded-md border border-slate-300 bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100">
               <input
                 type="number"
@@ -109,9 +109,9 @@ export function EventConfigPanel({
                 onFocus={() => setIsDirty(true)}
                 onInput={(event) => updateField(field.key, event.currentTarget.value)}
                 onChange={(event) => updateField(field.key, event.target.value)}
-                className="min-w-0 flex-1 border-0 px-3 text-sm text-slate-950 outline-none"
+                className="min-w-0 flex-1 border-0 px-3 text-sm font-bold text-slate-950 outline-none"
               />
-              <span className="grid w-14 place-items-center border-l border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500">
+              <span className="grid w-14 place-items-center border-l border-slate-200 bg-slate-50 text-xs font-extrabold text-slate-500">
                 {field.unit}
               </span>
             </div>
@@ -121,15 +121,15 @@ export function EventConfigPanel({
 
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-slate-600">
-          O dispositivo recebe esses limites no ACK, mas os eventos sao calculados no backend.
+          O dispositivo recebe esses limites no ACK, mas os eventos são calculados no backend.
         </p>
         <button
           type="button"
           onClick={() => void handleSave()}
           disabled={!vehicle || isSaving}
-          className="min-h-11 rounded-md bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+          className="min-h-11 rounded-md bg-slate-950 px-4 text-sm font-extrabold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
         >
-          {isSaving ? "Salvando..." : "Salvar configuracao"}
+          {isSaving ? "Salvando..." : "Salvar configuração"}
         </button>
       </div>
     </section>

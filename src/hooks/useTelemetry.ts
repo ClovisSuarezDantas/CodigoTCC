@@ -117,8 +117,11 @@ export function useTelemetry() {
       if (command === "sync") {
         const result = await verifySync(baseUrl);
 
-        if (result.ok) {
-          const updated = result.data.atualizados ?? 0;
+      if (result.ok) {
+          const updated =
+            result.data.dispositivosMarcadosComoNaoSincronizados ??
+            result.data.atualizados ??
+            0;
           setError(null);
           pushLocalLog("info", `Verificacao concluida. ${updated} dispositivo(s) marcado(s) como nao sincronizado(s).`);
           await refresh();

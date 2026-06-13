@@ -4,16 +4,31 @@
 
 :root {
   color-scheme: light;
-  background: #f7f8fa;
+  background: #eef2f6;
 }
 
 body {
   margin: 0;
-  background: #f7f8fa;
-  color: #111827;
+  min-height: 100vh;
+  background:
+    linear-gradient(135deg, rgba(14, 165, 233, 0.08), transparent 34%),
+    linear-gradient(315deg, rgba(16, 185, 129, 0.08), transparent 32%),
+    #eef2f6;
+  color: #0f172a;
+  font-family: var(--font-nunito-sans), Arial, Helvetica, sans-serif;
+  font-weight: 600;
 }
 
 button,
 input {
   font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: #bae6fd;
+  color: #082f49;
 }
