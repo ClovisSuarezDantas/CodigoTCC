@@ -61,6 +61,156 @@ type ConfiguracaoApi = EventConfig & {
   veiculoId: string;
 };
 
+const DEMO_TOKEN = "demo-local-token";
+
+const demoConfig: ConfiguracaoApi = {
+  id: "config-demo-1",
+  veiculoId: "veiculo-demo-1",
+  limiteVelocidade: 80,
+  tempoParadaLongaMinutos: 10,
+  limiteFrenagemBrusca: 20,
+  limiteAceleracaoBrusca: 25
+};
+
+const demoVehicles: VehicleRecord[] = [
+  {
+    id: "veiculo-demo-1",
+    placa: "ABC1D23",
+    chassi: "9BWZZZ377VT004251",
+    marca: "Volkswagen",
+    modelo: "Gol",
+    ano: 2018,
+    configuracao: demoConfig,
+    createdAt: "2026-06-01T10:00:00.000Z",
+    updatedAt: "2026-06-12T14:30:00.000Z"
+  },
+  {
+    id: "veiculo-demo-2",
+    placa: "TCC2A26",
+    chassi: "9BGKS48B0FG123456",
+    marca: "Chevrolet",
+    modelo: "Onix",
+    ano: 2021,
+    createdAt: "2026-06-02T11:00:00.000Z",
+    updatedAt: "2026-06-12T14:30:00.000Z"
+  }
+];
+
+const demoDevices: DeviceRecord[] = [
+  {
+    id: "dispositivo-demo-1",
+    veiculoId: "veiculo-demo-1",
+    codigoDispositivo: "ESP32-TCC-001",
+    statusSincronizacao: "SINCRONIZADO",
+    ultimaSincronizacao: "2026-06-13T22:48:23.000Z",
+    veiculo: demoVehicles[0],
+    createdAt: "2026-06-01T10:05:00.000Z",
+    updatedAt: "2026-06-13T22:48:23.000Z"
+  },
+  {
+    id: "dispositivo-demo-2",
+    veiculoId: "veiculo-demo-2",
+    codigoDispositivo: "ESP32-TCC-002",
+    statusSincronizacao: "NAO_SINCRONIZADO",
+    ultimaSincronizacao: "2026-06-13T18:10:00.000Z",
+    veiculo: demoVehicles[1],
+    createdAt: "2026-06-02T11:05:00.000Z",
+    updatedAt: "2026-06-13T18:10:00.000Z"
+  }
+];
+
+const demoTelemetry: TelemetryRecord[] = [
+  {
+    id: "telemetria-demo-1",
+    pacoteId: "PKT-0004",
+    dispositivoId: "dispositivo-demo-1",
+    veiculoId: "veiculo-demo-1",
+    timestamp: "2026-06-13T22:48:23.000Z",
+    velocidadeObd: 86,
+    rpm: 3100,
+    temperaturaMotor: 92,
+    createdAt: "2026-06-13T22:48:24.000Z"
+  },
+  {
+    id: "telemetria-demo-2",
+    pacoteId: "PKT-0003",
+    dispositivoId: "dispositivo-demo-1",
+    veiculoId: "veiculo-demo-1",
+    timestamp: "2026-06-13T22:47:23.000Z",
+    velocidadeObd: 72,
+    rpm: 2600,
+    temperaturaMotor: 89,
+    createdAt: "2026-06-13T22:47:24.000Z"
+  },
+  {
+    id: "telemetria-demo-3",
+    pacoteId: "PKT-0002",
+    dispositivoId: "dispositivo-demo-1",
+    veiculoId: "veiculo-demo-1",
+    timestamp: "2026-06-13T22:46:23.000Z",
+    velocidadeObd: 0,
+    rpm: 780,
+    temperaturaMotor: 86,
+    createdAt: "2026-06-13T22:46:24.000Z"
+  }
+];
+
+const demoEvents: EventRecord[] = [
+  {
+    id: "evento-demo-1",
+    veiculoId: "veiculo-demo-1",
+    dispositivoId: "dispositivo-demo-1",
+    registroTelemetriaId: "telemetria-demo-1",
+    tipo: "EXCESSO_VELOCIDADE",
+    descricao: "Velocidade registrada de 86 km/h acima do limite configurado de 80 km/h.",
+    severidade: "MEDIA",
+    timestamp: "2026-06-13T22:48:23.000Z",
+    veiculo: demoVehicles[0],
+    dispositivo: demoDevices[0],
+    registroTelemetria: demoTelemetry[0],
+    createdAt: "2026-06-13T22:48:24.000Z"
+  },
+  {
+    id: "evento-demo-2",
+    veiculoId: "veiculo-demo-1",
+    dispositivoId: "dispositivo-demo-1",
+    registroTelemetriaId: "telemetria-demo-2",
+    tipo: "ACELERACAO_BRUSCA",
+    descricao: "Aumento de velocidade acima do limite configurado em curto intervalo.",
+    severidade: "ALTA",
+    timestamp: "2026-06-13T22:47:23.000Z",
+    veiculo: demoVehicles[0],
+    dispositivo: demoDevices[0],
+    registroTelemetria: demoTelemetry[1],
+    createdAt: "2026-06-13T22:47:24.000Z"
+  },
+  {
+    id: "evento-demo-3",
+    veiculoId: "veiculo-demo-1",
+    dispositivoId: "dispositivo-demo-1",
+    registroTelemetriaId: "telemetria-demo-3",
+    tipo: "PARADA_PROLONGADA",
+    descricao: "Veiculo permaneceu parado acima do tempo configurado.",
+    severidade: "BAIXA",
+    timestamp: "2026-06-13T22:46:23.000Z",
+    veiculo: demoVehicles[0],
+    dispositivo: demoDevices[0],
+    registroTelemetria: demoTelemetry[2],
+    createdAt: "2026-06-13T22:46:24.000Z"
+  }
+];
+
+demoVehicles[0] = {
+  ...demoVehicles[0],
+  dispositivo: demoDevices[0],
+  configuracao: demoConfig
+};
+
+demoVehicles[1] = {
+  ...demoVehicles[1],
+  dispositivo: demoDevices[1]
+};
+
 export function normalizeBaseUrl(url: string) {
   return url.trim().replace(/\/+$/, "");
 }
@@ -114,6 +264,10 @@ export function clearAuthSession() {
   }
 
   localStorage.removeItem(AUTH_STORAGE_KEY);
+}
+
+function isDemoSession() {
+  return getAuthSession()?.accessToken === DEMO_TOKEN;
 }
 
 async function requestJson<T>(
@@ -306,6 +460,26 @@ function mapStatus(dispositivo?: DispositivoApi | null): DeviceStatus {
 }
 
 export async function fetchDashboard(baseUrl: string): Promise<ApiResult<DashboardData>> {
+  if (isDemoSession()) {
+    const veiculo = demoVehicles[0];
+
+    return {
+      ok: true,
+      data: {
+        vehicle: mapVehicle(veiculo),
+        status: mapStatus(demoDevices[0]),
+        telemetry: mapTelemetry(demoTelemetry[0], demoTelemetry.length, "sincronizado"),
+        logs: mapLogs(demoEvents),
+        config: {
+          limiteVelocidade: demoConfig.limiteVelocidade,
+          tempoParadaLongaMinutos: demoConfig.tempoParadaLongaMinutos,
+          limiteFrenagemBrusca: demoConfig.limiteFrenagemBrusca,
+          limiteAceleracaoBrusca: demoConfig.limiteAceleracaoBrusca
+        }
+      }
+    };
+  }
+
   const veiculosResult = await authenticatedRequest<VeiculoApi[]>(baseUrl, "/veiculos");
 
   if (!veiculosResult.ok) {
@@ -364,6 +538,20 @@ export async function fetchDashboard(baseUrl: string): Promise<ApiResult<Dashboa
 }
 
 export async function verifySync(baseUrl: string) {
+  if (isDemoSession()) {
+    return {
+      ok: true,
+      data: {
+        dispositivosMarcadosComoNaoSincronizados: 1,
+        limiteSemAtualizacaoMinutos: 5
+      }
+    } satisfies ApiResult<{
+      dispositivosMarcadosComoNaoSincronizados?: number;
+      atualizados?: number;
+      limiteSemAtualizacaoMinutos?: number;
+    }>;
+  }
+
   return authenticatedRequest<{
     dispositivosMarcadosComoNaoSincronizados?: number;
     atualizados?: number;
@@ -376,6 +564,17 @@ export async function updateVehicleConfig(
   vehicleId: string,
   config: EventConfig
 ) {
+  if (isDemoSession()) {
+    return {
+      ok: true,
+      data: {
+        id: demoConfig.id,
+        veiculoId: vehicleId,
+        ...config
+      }
+    } satisfies ApiResult<ConfiguracaoApi>;
+  }
+
   return authenticatedRequest<ConfiguracaoApi>(
     baseUrl,
     `/configuracoes-veiculo/${vehicleId}`,
@@ -387,6 +586,13 @@ export async function updateVehicleConfig(
 }
 
 export function fetchVehicles(baseUrl: string) {
+  if (isDemoSession()) {
+    return Promise.resolve({
+      ok: true,
+      data: demoVehicles
+    } satisfies ApiResult<VehicleRecord[]>);
+  }
+
   return authenticatedRequest<VehicleRecord[]>(baseUrl, "/veiculos");
 }
 
@@ -394,6 +600,19 @@ export function createVehicle(
   baseUrl: string,
   payload: { placa: string; chassi?: string; marca: string; modelo: string; ano: number }
 ) {
+  if (isDemoSession()) {
+    return Promise.resolve({
+      ok: true,
+      data: {
+        id: `veiculo-demo-${Date.now()}`,
+        chassi: payload.chassi ?? null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        ...payload
+      }
+    } satisfies ApiResult<VehicleRecord>);
+  }
+
   return authenticatedRequest<VehicleRecord>(baseUrl, "/veiculos", {
     method: "POST",
     body: JSON.stringify(payload)
@@ -405,6 +624,18 @@ export function updateVehicle(
   id: string,
   payload: Partial<{ placa: string; chassi: string; marca: string; modelo: string; ano: number }>
 ) {
+  if (isDemoSession()) {
+    return Promise.resolve({
+      ok: true,
+      data: {
+        ...demoVehicles[0],
+        ...payload,
+        id,
+        chassi: payload.chassi ?? demoVehicles[0].chassi
+      }
+    } satisfies ApiResult<VehicleRecord>);
+  }
+
   return authenticatedRequest<VehicleRecord>(baseUrl, `/veiculos/${id}`, {
     method: "PUT",
     body: JSON.stringify(payload)
@@ -412,12 +643,26 @@ export function updateVehicle(
 }
 
 export function deleteVehicle(baseUrl: string, id: string) {
+  if (isDemoSession()) {
+    return Promise.resolve({
+      ok: true,
+      data: { message: "Veiculo removido com sucesso no modo demo." }
+    } satisfies ApiResult<{ message: string }>);
+  }
+
   return authenticatedRequest<{ message: string }>(baseUrl, `/veiculos/${id}`, {
     method: "DELETE"
   });
 }
 
 export function fetchDevices(baseUrl: string) {
+  if (isDemoSession()) {
+    return Promise.resolve({
+      ok: true,
+      data: demoDevices
+    } satisfies ApiResult<DeviceRecord[]>);
+  }
+
   return authenticatedRequest<DeviceRecord[]>(baseUrl, "/dispositivos");
 }
 
@@ -425,6 +670,20 @@ export function createDevice(
   baseUrl: string,
   payload: { veiculoId: string; codigoDispositivo: string }
 ) {
+  if (isDemoSession()) {
+    return Promise.resolve({
+      ok: true,
+      data: {
+        id: `dispositivo-demo-${Date.now()}`,
+        statusSincronizacao: "SINCRONIZADO",
+        ultimaSincronizacao: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        ...payload
+      }
+    } satisfies ApiResult<DeviceRecord>);
+  }
+
   return authenticatedRequest<DeviceRecord>(baseUrl, "/dispositivos", {
     method: "POST",
     body: JSON.stringify(payload)
@@ -436,6 +695,17 @@ export function updateDevice(
   id: string,
   payload: Partial<{ codigoDispositivo: string; statusSincronizacao: DeviceRecord["statusSincronizacao"] }>
 ) {
+  if (isDemoSession()) {
+    return Promise.resolve({
+      ok: true,
+      data: {
+        ...demoDevices[0],
+        ...payload,
+        id
+      }
+    } satisfies ApiResult<DeviceRecord>);
+  }
+
   return authenticatedRequest<DeviceRecord>(baseUrl, `/dispositivos/${id}`, {
     method: "PUT",
     body: JSON.stringify(payload)
@@ -443,16 +713,37 @@ export function updateDevice(
 }
 
 export function deleteDevice(baseUrl: string, id: string) {
+  if (isDemoSession()) {
+    return Promise.resolve({
+      ok: true,
+      data: { message: "Dispositivo removido com sucesso no modo demo." }
+    } satisfies ApiResult<{ message: string }>);
+  }
+
   return authenticatedRequest<{ message: string }>(baseUrl, `/dispositivos/${id}`, {
     method: "DELETE"
   });
 }
 
 export function fetchEvents(baseUrl: string) {
+  if (isDemoSession()) {
+    return Promise.resolve({
+      ok: true,
+      data: demoEvents
+    } satisfies ApiResult<EventRecord[]>);
+  }
+
   return authenticatedRequest<EventRecord[]>(baseUrl, "/eventos");
 }
 
 export function fetchVehicleTelemetry(baseUrl: string, veiculoId: string) {
+  if (isDemoSession()) {
+    return Promise.resolve({
+      ok: true,
+      data: demoTelemetry.filter((record) => record.veiculoId === veiculoId)
+    } satisfies ApiResult<TelemetryRecord[]>);
+  }
+
   return authenticatedRequest<TelemetryRecord[]>(
     baseUrl,
     `/telemetria/veiculo/${veiculoId}`
