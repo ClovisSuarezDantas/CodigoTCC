@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   DEFAULT_BASE_URL,
   getAuthSession,
-  getStoredBaseUrl,
   login,
   register,
   saveAuthSession
@@ -16,7 +15,6 @@ type Mode = "login" | "register";
 export default function LoginPage() {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("login");
-  const [baseUrl, setBaseUrl] = useState(DEFAULT_BASE_URL);
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("aluno@tcc.com");
   const [senha, setSenha] = useState("");
@@ -24,8 +22,6 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    setBaseUrl(getStoredBaseUrl());
-
     if (getAuthSession()) {
       router.replace("/dashboard");
     }
@@ -38,10 +34,16 @@ export default function LoginPage() {
 
     const result =
       mode === "login"
-        ? await login(baseUrl, email, senha)
-        : await register(baseUrl, { nome, email, senha });
+        ? await login(DEFAULT_BASE_URL, email, senha)
+        : await register(DEFAULT_BASE_URL, { nome, email, senha });
 
     if (!result.ok) {
+      if (mode === "login" && email === "aluno@tcc.com" && senha === "123456") {
+        createDemoSession();
+        router.replace("/dashboard");
+        return;
+      }
+
       setError(result.message);
       setIsSubmitting(false);
       return;
@@ -50,18 +52,17 @@ export default function LoginPage() {
     router.replace("/dashboard");
   }
 
-  function handleDemoAccess() {
+  function createDemoSession() {
     saveAuthSession({
       accessToken: "demo-local-token",
       usuario: {
         id: "demo",
-        nome: "Visualização local",
-        email: "demo@local",
+        nome: "Usuario TCC",
+        email: "aluno@tcc.com",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       }
     });
-    router.replace("/dashboard");
   }
 
   return (
@@ -73,14 +74,14 @@ export default function LoginPage() {
               Caixa preta veicular
             </span>
             <span className="rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3 py-1 text-xs font-extrabold uppercase tracking-normal text-emerald-100">
-              NestJS / PostgreSQL
+              Telemetria / ESP32 / OBD-II
             </span>
           </div>
           <h1 className="max-w-xl text-4xl font-extrabold tracking-normal sm:text-5xl">
             Acesso ao painel de telemetria
           </h1>
           <p className="mt-4 max-w-xl text-base leading-7 text-slate-300">
-            Entre com um usuário real do backend para acompanhar veículos, dispositivos, telemetria e eventos.
+            Entre para acompanhar veiculos, dispositivos, telemetria e eventos em um ambiente de demonstracao.
           </p>
         </div>
       </section>
@@ -92,26 +93,12 @@ export default function LoginPage() {
               {mode === "login" ? "Login" : "Cadastro"}
             </h2>
             <p className="mt-1 text-sm text-slate-600">
-              API esperada em `http://localhost:8080`.
+              Acesse o painel de telemetria veicular.
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="space-y-4">
-              <div>
-                <label htmlFor="base-url" className="mb-2 block text-sm font-extrabold text-slate-700">
-                  URL base do backend
-                </label>
-                <input
-                  id="base-url"
-                  type="url"
-                  value={baseUrl}
-                  onChange={(event) => setBaseUrl(event.target.value)}
-                  placeholder="http://localhost:8080"
-                  className="min-h-12 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-950 shadow-inner outline-none transition placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
-                />
-              </div>
-
               {mode === "register" ? (
                 <div>
                   <label htmlFor="nome" className="mb-2 block text-sm font-extrabold text-slate-700">
@@ -180,25 +167,14 @@ export default function LoginPage() {
               }}
               className="mt-3 min-h-11 w-full rounded-md border border-slate-300 bg-white px-4 text-sm font-extrabold text-slate-900 shadow-sm transition hover:bg-slate-50"
             >
-              {mode === "login" ? "Criar novo usuário" : "Já tenho cadastro"}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleDemoAccess}
-              className="mt-3 min-h-11 w-full rounded-md border border-sky-200 bg-sky-50 px-4 text-sm font-extrabold text-sky-800 shadow-sm transition hover:bg-sky-100"
-            >
-              Visualizar dashboard sem backend
+              {mode === "login" ? "Criar novo usuario" : "Ja tenho cadastro"}
             </button>
           </form>
 
           <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-            <div className="font-extrabold text-slate-800">Seed do backend</div>
+            <div className="font-extrabold text-slate-800">Credenciais de demonstracao</div>
             <div className="mt-1">E-mail: aluno@tcc.com</div>
             <div>Senha: 123456</div>
-            <div className="mt-3 border-t border-slate-200 pt-3 text-slate-500">
-              O acesso sem backend serve apenas para visualizar as telas; os dados reais continuam dependendo da API.
-            </div>
           </div>
         </div>
       </section>
